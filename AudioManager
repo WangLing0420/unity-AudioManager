@@ -1,0 +1,99 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+public enum AudioType
+{
+    BGM,
+    Click,
+    Button,
+}
+
+public class AudioManager : MonoBehaviour
+{
+    [Header("音频数据")] public List<AudioData> audioData;
+
+    private Dictionary<AudioType, AudioData> _audioDataDic;
+
+    [Serializable]
+    public struct AudioData
+    {
+        public AudioType type;
+        public AudioClip audioClip;
+        public AudioSource audioSource;
+    }
+
+    //静态实例
+    private static AudioManager _instance;
+
+    //公共访问点
+    public static AudioManager instance
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                _instance = FindObjectOfType<AudioManager>();
+                DontDestroyOnLoad(_instance.gameObject);
+            }
+
+            return _instance;
+        }
+    }
+
+    private void Awake()
+    {
+        if (_instance == null)
+        {
+            _instance = this;
+            DontDestroyOnLoad(this);
+        }
+        else if (_instance != this)
+        {
+            Destroy(gameObject);
+        }
+
+        //初始化AudioSource
+        IniAudioSource();
+    }
+
+    private void OnEnable()
+    {
+        //播放背景音乐
+        audioData[0].audioSource.Play();
+        EventController.OnPlayAudio += PlayerAudio;
+    }
+
+    private void OnDisable()
+    {
+        EventController.OnPlayAudio -= PlayerAudio;
+    }
+
+    private void IniAudioSource()
+    {
+        _audioDataDic = new Dictionary<AudioType, AudioData>();
+
+        foreach (var audio in audioData)
+        {
+            if (audio.audioSource != null)
+            {
+                audio.audioSource.clip = audio.audioClip;
+            }
+
+            //存入字典
+            _audioDataDic[audio.type] = audio;
+        }
+    }
+
+    /// <summary>
+    /// 播放指定类型的音效
+    /// </summary>
+    /// <param name="audioType">音频类型</param>
+    private void PlayerAudio(AudioType audioType)
+    {
+        if (_audioDataDic.TryGetValue(audioType, out AudioData audioData))
+        {
+            _audioDataDic[audioType].audioSource.Play(); //哈希表查询提升效率
+        }
+    }
+}
